@@ -5,7 +5,7 @@ window.addEventListener( 'load', () => {
     const username = sessionStorage.getItem( 'username' );
 
     if ( !room ) {
-        document.querySelector( '#room-create' ).attributes.removeNamedItem( 'hidden' );
+       document.querySelector( '#createjoin' ).attributes.removeNamedItem( 'hidden' );
     }
 
     else if ( !username ) {
@@ -13,6 +13,7 @@ window.addEventListener( 'load', () => {
     }
 
     else {
+        setLocalUserName(username);
         let commElem = document.getElementsByClassName( 'room-comm' );
 
         for ( let i = 0; i < commElem.length; i++ ) {
@@ -29,8 +30,7 @@ window.addEventListener( 'load', () => {
         var randomNumber = `__${h.generateRandomString()}__${h.generateRandomString()}__`;
         var myStream = '';
         var screen = '';
-        var recordedStream = [];
-        var mediaRecorder = '';
+        
 
         //Get user video by default
         getAndSetUserStream();
@@ -39,7 +39,6 @@ window.addEventListener( 'load', () => {
         socket.on( 'connect', () => {
             //set socketId
             socketId = socket.io.engine.id;
-            document.getElementById('randomNumber').innerText = randomNumber;
 
 
             socket.emit( 'subscribe', {
@@ -69,7 +68,18 @@ window.addEventListener( 'load', () => {
             socket.on( 'sdp', async ( data ) => {
                 if ( data.description.type === 'offer' ) {
                     data.description ? await pc[data.sender].setRemoteDescription( new RTCSessionDescription( data.description ) ) : '';
-
+                    //username
+                    pc[data.sender].ondatachannel= (event) =>{
+                        const tempchannel1 = event.channel;
+                        tempchannel1.onmessage = h.handleReceivemessage;
+                        var f2 = {dt1 : tempchannel1};
+                        h.storedatachannel(data.sender,f2);
+                        tempchannel1.onopen = (e) =>{
+                            
+                            tempchannel1.send("1111"+username + "," + socketId);
+                        };   
+                    };
+                    //usernameend
                     h.getUserFullMedia().then( async ( stream ) => {
                         
                             if ( !document.getElementById( 'local' ).srcObject ) {
@@ -109,9 +119,49 @@ window.addEventListener( 'load', () => {
             } );
         } );
 
+        function setLocalUserName(user){
+            let id = 'local-control-div';
+            let controlDiv = document.getElementById(id);
+            
+            controlDiv.innerHTML = `<p style="color: white"><strong>`+ user+`</strong></p>`;
+        }
+        //Chat textarea
+        document.getElementById( 'chat-input' ).addEventListener( 'keypress', ( e ) => {
+            if ( e.which === 13 && ( e.target.value.trim() ) ) {
+                e.preventDefault();
+                console.warn(e);
+                sendMsg( e.target.value );
+
+                setTimeout( () => {
+                    e.target.value = '';
+                }, 50 );
+            }
+        } );
+        document.getElementById('sendButtonId').addEventListener('click', (e) => {
+            const chatMsg =document.getElementById( 'chat-input' ) ; 
+            console.log(chatMsg);
+            sendMsg( chatMsg.value );
+            setTimeout( () => {
+                chatMsg.value = '';
+            }, 50 );
+    
+        });
+        function sendMsg( msg ) {
+            let data = {
+                room: room,
+                msg: msg,
+                sender: `${username} (${randomNumber})`
+            };
+
+            //emit chat message
+            socket.emit( 'chat', data );
+
+            //add localchat
+            h.addChat( data, 'local' );
+        }
 
         function getAndSetUserStream() {
-            console.log("You are here");
+            
             h.getUserFullMedia().then( ( stream ) => {
                 //save my stream
                 myStream = stream;
@@ -131,6 +181,13 @@ window.addEventListener( 'load', () => {
 
         function init( createOffer, partnerName ) {
             pc[partnerName] = new RTCPeerConnection( h.getIceServer() );
+            
+            //for Username
+            const tempchannel = pc[partnerName].createDataChannel("sendChannel");
+            tempchannel.onmessage =h.handleReceivemessage;
+            var f2 = {dt1 : tempchannel};
+            h.storedatachannel( partnerName, f2); 
+            //username ended
 
             if ( screen && screen.getTracks().length ) {
                 screen.getTracks().forEach( ( track ) => {
@@ -184,9 +241,12 @@ window.addEventListener( 'load', () => {
             };
 
 
-
+            tempchannel.onopen = (e) =>{
+                tempchannel.send("1111"+username + "," + socketId);
+            };
             //add
             pc[partnerName].ontrack = ( e ) => {
+                
                 let str = e.streams[0];
                 if ( document.getElementById( `${ partnerName }-video` ) ) {
                     document.getElementById( `${ partnerName }-video` ).srcObject = str;
@@ -203,7 +263,9 @@ window.addEventListener( 'load', () => {
                     //video controls elements
                     let controlDiv = document.createElement( 'div' );
                     controlDiv.className = 'remote-video-controls';
-                    controlDiv.innerHTML = `<p style="color: white"><strong>`+ username+`</strong></p>`;
+
+                    controlDiv.id = `${ partnerName }-div`;
+                    //controlDiv.innerHTML = `<p style="color: white"><strong>`+ username+`</strong></p>`;
                     //create a new div for card
                     let cardDiv = document.createElement( 'div' );
                     //cardDiv.className = 'card card-sm';
@@ -240,7 +302,6 @@ window.addEventListener( 'load', () => {
             pc[partnerName].onsignalingstatechange = ( d ) => {
                 switch ( pc[partnerName].signalingState ) {
                     case 'closed':
-                        console.log( "Signalling state is 'closed'" );
                         h.closeVideo( partnerName );
                         break;
                 }
@@ -257,7 +318,7 @@ window.addEventListener( 'load', () => {
         
 
         function stopVideoStream() {
-            console.log("I am in Stop Video");
+            
             const videoElement = document.getElementById( 'toggle-video' );
             //const stream = videoElement.srcObject;
           
@@ -267,13 +328,9 @@ window.addEventListener( 'load', () => {
 
         function broadcastNewTracks( stream, type, mirrorMode = true ) {
             h.setLocalStream( stream,  mirrorMode );
-            console.log("I am here");
             let track = type == 'audio' ? stream.getAudioTracks()[0] : stream.getVideoTracks()[0];
-            console.log("track" + track + pc.length);
             for ( let p in pc ) {
-                console.log("this is it " +  p);
                 let pName = pc[p];
-                console.log("this is it " +  pName);
                 if ( typeof pc[pName] == 'object' ) {
                     h.replaceTrack( track, pc[pName] );
                 }
@@ -287,7 +344,49 @@ window.addEventListener( 'load', () => {
 
         
 
+        function shareScreen() {
+            
+            h.shareScreen().then( ( stream ) => {
+                h.toggleShareIcons( true );
 
+                //disable the video toggle btns while sharing screen. This is to ensure clicking on the btn does not interfere with the screen sharing
+                //It will be enabled was user stopped sharing screen
+                h.toggleVideoBtnDisabled( true );
+
+                //save my screen stream
+                screen = stream;
+
+                //share the new stream with all partners
+                broadcastNewTracks( stream, 'video', false );
+
+                //When the stop sharing button shown by the browser is clicked
+                screen.getVideoTracks()[0].addEventListener( 'ended', () => {
+                    stopSharingScreen();
+                } );
+            } ).catch( ( e ) => {
+                console.error( e );
+            } );
+        }
+
+
+
+        function stopSharingScreen() {
+            //enable video toggle btn
+            h.toggleVideoBtnDisabled( false );
+
+            return new Promise( ( res, rej ) => {
+                screen.getTracks().length ? screen.getTracks().forEach( track => track.stop() ) : '';
+
+                res();
+            } ).then( () => {
+                h.toggleShareIcons( false );
+                broadcastNewTracks( myStream, 'video' );
+            } ).catch( ( e ) => {
+                console.error( e );
+            } );
+        }
+
+        
         
 
 
@@ -302,7 +401,7 @@ window.addEventListener( 'load', () => {
             let elem = document.getElementById( 'toggle-video' );
             
             if ( myStream.getVideoTracks()[0].enabled ) {
-                console.log("I am in if myStream Video");
+                
                 e.target.classList.remove( 'fa-video' );
                 e.target.classList.add( 'fa-video-slash' );
                 elem.setAttribute( 'title', 'Show Video' );
@@ -326,18 +425,9 @@ window.addEventListener( 'load', () => {
                 broadcastNewTracks( myStream, 'video' );
                 
                 
-                // for ( let p in pc ) {
-                //     console.log("this is it " +  p);
-                //     let pName = pc[p];
-                //     console.log("this is it " +  pName);
-                //     myStream.getTracks().forEach( ( track ) => {
-                //         pc[pName].addTrack( track, myStream );//should trigger negotiationneeded event
-                //     } );
-                // }
                 
-                //myStream.getTracks().forEach(track => track.s());
 
-                console.log("else");
+                
             }
     
             
@@ -375,7 +465,18 @@ window.addEventListener( 'load', () => {
         
 
 
-        
+            //When user clicks the 'Share screen' button
+        document.getElementById( 'share-screen' ).addEventListener( 'click', ( e ) => {
+            e.preventDefault();
+
+            if ( screen && screen.getVideoTracks().length && screen.getVideoTracks()[0].readyState != 'ended' ) {
+                stopSharingScreen();
+            }
+
+            else {
+                shareScreen();
+            }
+        } );
 
 
         

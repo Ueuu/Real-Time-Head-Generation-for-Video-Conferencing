@@ -1,5 +1,8 @@
 var pc = {pc1 : ''};
 
+var socket1 = '';
+var channel2 = {};
+var names = {}
 export default {
     pc , 
     
@@ -16,7 +19,7 @@ export default {
         pc.pc1 = sdf.dt;
     },
     printPc(){
-        console.log(pc.pc1);
+        
     },
     closeVideo( elemId ) {
         if ( document.getElementById( elemId ) ) {
@@ -65,7 +68,6 @@ export default {
 
 
     getUserFullMedia() {
-        console.log("debug " + this.userMediaAvailable());
         if ( this.userMediaAvailable() ) {
             return navigator.mediaDevices.getUserMedia( {
                 video: true,
@@ -131,17 +133,17 @@ export default {
     replaceTrack( stream, recipientPeer ) {
         let sender;
         if(recipientPeer.getSenders){
-            console.log("Version Replace Track In recipientPeer");
+            
             sender =recipientPeer.getSenders().find( s => s.track && s.track.kind === stream.kind );
         }
         else{
-            console.log("Version Replace Track In false");
+            
 
             sender =false;
         }
 
         if(sender){
-            console.log("Version Replace Track In True");
+            
             sender.replaceTrack( stream );
         }
         
@@ -164,7 +166,7 @@ export default {
         //     stream.getTracks().forEach(track => track.stop());
         //     videoElement.srcObject = null;
         //   }
-        console.log("toggle video click " + document.getElementById( 'toggle-video' ));
+        
           
         document.getElementById( 'toggle-video' ).disabled = disabled;
     },
@@ -191,10 +193,41 @@ export default {
         }
     },
 
+    toggleShareIcons( share ) {
+        let shareIconElem = document.querySelector( '#share-screen' );
 
-    
+        if ( share ) {
+            shareIconElem.setAttribute( 'title', 'Stop sharing screen' );
+            shareIconElem.children[0].classList.add( 'text-primary' );
+            shareIconElem.children[0].classList.remove( 'text-white' );
+        }
+
+        else {
+            shareIconElem.setAttribute( 'title', 'Share screen' );
+            shareIconElem.children[0].classList.add( 'text-white' );
+            shareIconElem.children[0].classList.remove( 'text-primary' );
+        }
+    },
+    shareScreen() {
+        if ( this.userMediaAvailable() ) {
+            return navigator.mediaDevices.getDisplayMedia( {
+                video: {
+                    cursor: "always"
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    sampleRate: 44100
+                }
+            } );
+        }
+
+        else {
+            throw new Error( 'User media not available' );
+        }
+    },
     stopVideoStream() {
-        console.log("I am in Stop Video");
+        
         
         //const stream = videoElement.srcObject;
         const localEl = document.getElementById( 'local' );
@@ -218,7 +251,56 @@ export default {
         }
     },
 
+    addChat( data, senderType ) {
+        let chatMsgDiv = document.querySelector( '#chat-messages' );
+        let contentAlign = 'justify-content-end';
+        let senderName = 'You';
+        let msgBg = 'bg-white';
 
+        if ( senderType === 'remote' ) {
+            contentAlign = 'justify-content-start';
+            senderName = data.sender;
+            msgBg = '';
+
+            this.toggleChatNotificationBadge();
+        }
+
+        let infoDiv = document.createElement( 'div' );
+        infoDiv.className = 'sender-info';
+        infoDiv.innerText = `${ senderName } - ${ moment().format( 'Do MMMM, YYYY h:mm a' ) }`;
+
+        let colDiv = document.createElement( 'div' );
+        colDiv.className = `col-10 card chat-card msg ${ msgBg }`;
+       colDiv.innerHTML = xssFilters.inHTMLData( data.msg );
+        let rowDiv = document.createElement( 'div' );
+        rowDiv.className = `row ${ contentAlign } mb-2`;
+
+
+        colDiv.appendChild( infoDiv );
+        rowDiv.appendChild( colDiv );
+
+        chatMsgDiv.appendChild( rowDiv );
+
+        /**
+         * Move focus to the newly added message but only if:
+         * 1. Page has focus
+         * 2. User has not moved scrollbar upward. This is to prevent moving the scroll position if user is reading previous messages.
+         */
+        if ( this.pageHasFocus ) {
+            rowDiv.scrollIntoView();
+        }
+    },
+
+
+    toggleChatNotificationBadge() {
+        if ( document.querySelector( '#chat-pane' ).classList.contains( 'chat-opened' ) ) {
+            document.querySelector( '#new-chat-notification' ).setAttribute( 'hidden', true );
+        }
+
+        else {
+            document.querySelector( '#new-chat-notification' ).removeAttribute( 'hidden' );
+        }
+    },
 
     setLocalStream( stream, mirrorMode = true ) {
         
@@ -228,7 +310,35 @@ export default {
         mirrorMode ? localVidElem.classList.add( 'mirror-mode' ) : localVidElem.classList.remove( 'mirror-mode' );
     },
 
-
+    //Username
+    channel2,
+    storedatachannel( partnerName, channl1){
+        
+        channel2[partnerName] = channl1.dt1;
+        
+        
+        
+    },
+    
+    storeSocket(socket){
+        socket1 =socket;
+    },
+    handleReceivemessage(e){
+        var command = e.data.slice(0,4);
+        let result =e.data.slice(4);
+        if(command=="1111"){
+            let x = result.split(",");
+            
+            names[x[1]] = x[0];
+            let id = x[1] + "-div";
+            let controlDiv = document.getElementById(id);
+            
+            controlDiv.innerHTML = `<p style="color: white"><strong>`+ x[0]+`</strong></p>`;
+            
+        }
+        
+    },
+    //username ended
 
     adjustVideoElemSize() {
         let elem = document.getElementsByClassName( 'card' );
@@ -255,7 +365,6 @@ export default {
 
 
     createDemoRemotes( str, total = 6 ) {
-        console.log("sucessfuly in create demo remote ");
         let i = 0;
 
         let testInterval = setInterval( () => {

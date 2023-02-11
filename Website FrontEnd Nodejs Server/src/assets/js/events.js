@@ -1,259 +1,164 @@
-
 import helpers from './helpers.js';
 
 
-window.addEventListener( 'load', () => {
-    
-    document.getElementById('connectserver').addEventListener('click', ( e ) => {
-        
-        
+window.addEventListener('load', () => {
 
-        
+    //create
+    document.getElementById('create').addEventListener('click', (e) => {
+        const createjoin = document.getElementById('createjoin');
+        createjoin.hidden = true;
 
-        var socket = new WebSocket("ws://localhost:1243");
-        var canvas = document.getElementById("canvas");
+        const rommcrete = document.getElementById('room-create');
 
-        var conserver= document.getElementById('connectserver');
-        var capserver = document.getElementById('captureserver');
-        
-        let change_video_src_temp = true;
-        canvas.height = 400;
-        canvas.width = 400;
+        rommcrete.hidden = false;
 
-        socket.onopen = function(e) {
-            alert("[open] Connection established");
-            //alert("Sending to server");
-            socket.send("My name is Varun");
-            conserver.hidden = true;
-            capserver.hidden = false;
-
-            
-            init_keys(socket);
-          };
-          
-          socket.onmessage = function(event) {
-            //alert(`[message] Data received from server: ${event.data}`);
-            //console.log( event.data)
-
-            
-            
-
-            var ctx = canvas.getContext("2d");
-
-            //const data =  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAIAAAACDbGyAAAAAXNSR0IArs4c6QAAAAlwSFlzAAALEwAACxMBAJqcGAAAAAd0SU1FB9oMCRUiMrIBQVkAAAAZdEVYdENvbW1lbnQAQ3JlYXRlZCB3aXRoIEdJTVBXgQ4XAAAADElEQVQI12NgoC4AAABQAAEiE+h1AAAAAElFTkSuQmCC";
-            const arrayBuffer = event.data;
-            var image = new Image();
-            image.onload = function() {
-                ctx.drawImage(image, 0, 0, 400 , 400);
-            };
-            image.src = 'data:image/jpg;base64,' + arrayBuffer;
-
-            const video1 = document.getElementById('video1');
-            
-            if(video1.hidden==true){
-                video1.hidden = false;
-            
-                const canvas_stream = canvas.captureStream(20);
-                
-                let video1stream = null ; 
-                try{
-                    video1.srcObject = canvas_stream;
-                    
-                } 
-                catch(err){
-                    console.log("error := " + err);
-                }
-            }
-            if(change_video_src_temp){
-                video1.height = canvas.videoHeight;
-                video1.width = canvas.videoWidth;
-                change_video__src();
-                change_video_src_temp = false;
-                
-            }
-            
-            
-            
-          };
-          
-          socket.onclose = function(event) {
-            if (event.wasClean) {
-              alert(`[close] Connection closed cleanly, code=${event.code} reason=${event.reason}`);
-            } else {
-              // e.g. server process killed or network down
-              // event.code is usually 1006 in this case
-              alert('[close] Connection died');
-            }
-          };
-          
-          socket.onerror = function(error) {
-            alert(`[error] ${error.message}`);
-          };
-          
-        
-
-        
     });
-    let socket1;
-    document.getElementById('captureserver').addEventListener('click', ( e ) => {
-        var canvas = document.getElementById("canvas1");
-        var video = document.getElementById('local');
-        var context = canvas.getContext('2d');
-        
-        //set size proportional to image
-        
 
-        //step 1 - resize to 50%
-        var oc = document.createElement('canvas'),
-        octx = oc.getContext('2d');
-
-        oc.width = 256;
-        oc.height = 256;
-        octx.drawImage(video, 0, 0, oc.width, oc.height);
-
-        // step 2
-        octx.drawImage(oc, 0, 0, oc.width , oc.height );
-
-        // step 3, resize to final size
-        context.drawImage(oc, 0, 0, oc.width, oc.height,
-        0, 0, canvas.width, canvas.height);
-        
-        //context.drawImage(video, 100, 100 ,  );
-
-
-
-        var dataURL = canvas.toDataURL("image/png");
-        send_img(dataURL);
-        helpers.stopVideoStream();
+    //join
+    document.getElementById('join').addEventListener('click', (e) => {
+        const createjoin = document.getElementById('createjoin');
+        createjoin.hidden = true;
+        const joinroom = document.getElementById('username-set');
+        joinroom.hidden = false;
     });
-    
-    async function send_img(img){
-        await socket1.send(img)
-    }
-    
-    function init_keys(socket){
-        socket1 = socket;
-        window.addEventListener( 'keydown', (event) => {
-            if(event.key=='x'){
-                console.log("X is pressed");
-                socket1.send(dataURL);
-            }
-        });
-    }
-    function change_video__src(){
-        const video1 = document.getElementById('video1');
-        var pc = helpers.pc.pc1;
-        let stream = video1.srcObject ; 
-        let track = stream.getVideoTracks()[0];
-        console.log("pc = " + pc + " = len =  " + typeof pc);
-        for ( let p in pc ) {
-            console.log("this is it " +  p);
-            let pName = pc[p];
-            console.log("this is it " +  pName);
-            if ( typeof pc[pName] == 'object' ) {
-                helpers.replaceTrack( track, pc[pName] );
-            }
+
+
+
+    function toggleShareIcons(share) {
+        let shareIconElem = document.querySelector('#share-screen');
+
+        if (share) {
+            shareIconElem.setAttribute('title', 'Stop sharing screen');
+            shareIconElem.children[0].classList.add('text-primary');
+            shareIconElem.children[0].classList.remove('text-white');
+        } else {
+            shareIconElem.setAttribute('title', 'Share screen');
+            shareIconElem.children[0].classList.add('text-white');
+            shareIconElem.children[0].classList.remove('text-primary');
         }
     }
-   
-    
-    
-    
+    //when close clicked 
+    document.querySelector('#chat-icon-id').addEventListener('click', (e) => {
+        let chatElem = document.querySelector('#chat-pane');
+        let mainSecElem = document.querySelector('#main-section');
+        chatElem.setAttribute('hidden', true);
+        mainSecElem.classList.remove('col-md-9');
+        mainSecElem.classList.add('col-md-12');
+        chatElem.classList.remove('chat-opened');
+    });
+    //When the chat icon is clicked
+    document.querySelector('#toggle-chat-pane').addEventListener('click', (e) => {
+        let chatElem = document.querySelector('#chat-pane');
+        let mainSecElem = document.querySelector('#main-section');
 
-    
-    
-    
+        if (chatElem.classList.contains('chat-opened')) {
+            chatElem.setAttribute('hidden', true);
+            mainSecElem.classList.remove('col-md-9');
+            mainSecElem.classList.add('col-md-12');
+            chatElem.classList.remove('chat-opened');
+        } else {
+            chatElem.attributes.removeNamedItem('hidden');
+            mainSecElem.classList.remove('col-md-12');
+            mainSecElem.classList.add('col-md-9');
+            chatElem.classList.add('chat-opened');
+        }
+
+        //remove the 'New' badge on chat icon (if any) once chat is opened.
+        setTimeout(() => {
+            if (document.querySelector('#chat-pane').classList.contains('chat-opened')) {
+                helpers.toggleChatNotificationBadge();
+            }
+        }, 300);
+    });
 
 
 
-    
+
+
+
+
+
+
+
 
 
     //When the video frame is clicked. This will enable picture-in-picture
-    document.getElementById( 'local' ).addEventListener( 'click', () => {
-        if ( !document.pictureInPictureElement ) {
-            document.getElementById( 'local' ).requestPictureInPicture()
-                .catch( error => {
+    document.getElementById('local').addEventListener('click', () => {
+        if (!document.pictureInPictureElement) {
+            document.getElementById('local').requestPictureInPicture()
+                .catch(error => {
                     // Video failed to enter Picture-in-Picture mode.
-                    console.error( error );
-                } );
-        }
-
-        else {
+                    console.error(error);
+                });
+        } else {
             document.exitPictureInPicture()
-                .catch( error => {
+                .catch(error => {
                     // Video failed to leave Picture-in-Picture mode.
-                    console.error( error );
-                } );
+                    console.error(error);
+                });
         }
-    } );
+    });
 
 
     //When the 'Create room" is button is clicked
-    document.getElementById( 'create-room' ).addEventListener( 'click', ( e ) => {
+    document.getElementById('create-room').addEventListener('click', (e) => {
         e.preventDefault();
 
-        let roomName = document.querySelector( '#room-name' ).value;
-        let yourName = document.querySelector( '#your-name' ).value;
+        let roomName = document.querySelector('#room-name').value;
+        let yourName = document.querySelector('#your-name').value;
 
-        if ( roomName && yourName ) {
+        if (roomName && yourName) {
             //remove error message, if any
             document.querySelector('#err-msg').innerText = "";
 
             //save the user's name in sessionStorage
-            sessionStorage.setItem( 'username', yourName );
+            sessionStorage.setItem('username', yourName);
 
             //create room link
             let roomLink = `${ location.origin }?room=${ roomName.trim().replace( ' ', '_' ) }_${ helpers.generateRandomString() }`;
 
             //show message with link to room
-            document.querySelector( '#room-created' ).innerHTML = `Room successfully created. Click <a href='${ roomLink }'>here</a> to enter room. 
+            document.querySelector('#room-created').innerHTML = `Room successfully created. Click <a href='${ roomLink }'>here</a> to enter room. 
                 Share the room link with your partners.`;
 
             //empty the values
-            document.querySelector( '#room-name' ).value = '';
-            document.querySelector( '#your-name' ).value = '';
-        }
-
-        else {
+            document.querySelector('#room-name').value = '';
+            document.querySelector('#your-name').value = '';
+        } else {
             document.querySelector('#err-msg').innerText = "All fields are required";
         }
-    } );
+    });
 
 
     //When the 'Enter room' button is clicked.
-    document.getElementById( 'enter-room' ).addEventListener( 'click', ( e ) => {
+    document.getElementById('enter-room').addEventListener('click', (e) => {
         e.preventDefault();
 
-        let name = document.querySelector( '#username' ).value;
+        let name = document.querySelector('#username').value;
 
-        if ( name ) {
+        if (name) {
             //remove error message, if any
             document.querySelector('#err-msg-username').innerText = "";
 
             //save the user's name in sessionStorage
-            sessionStorage.setItem( 'username', name );
+            sessionStorage.setItem('username', name);
 
             //reload room
             location.reload();
-        }
-
-        else {
+        } else {
             document.querySelector('#err-msg-username').innerText = "Please input your name";
         }
-    } );
+    });
 
 
-    document.addEventListener( 'click', ( e ) => {
-        if ( e.target && e.target.classList.contains( 'expand-remote-video' ) ) {
-            helpers.maximiseStream( e ); 
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.classList.contains('expand-remote-video')) {
+            helpers.maximiseStream(e);
+        } else if (e.target && e.target.classList.contains('mute-remote-mic')) {
+            helpers.singleStreamToggleMute(e);
         }
-
-        else if ( e.target && e.target.classList.contains( 'mute-remote-mic' ) ) {
-            helpers.singleStreamToggleMute( e );
-        }
-    } );
+    });
 
 
-    
-} );
+
+});
